@@ -44,7 +44,8 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
   _processEventLock: Lock;
   _pendingEvents: Array<MutationEvent>;
 
-  _peerGroup?: PeerGroupInfo;
+  _readersPeerGroup?: PeerGroupInfo;
+  _permissionPeerGroup?: PeerGroupInfo;
 
   _synchronizing: boolean;
   _shouldBeSynchronizing: boolean;
@@ -189,13 +190,13 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
         resources.getEndointParserForDiscovery()
       );
 
-      this._peerGroup = {
+      this._readersPeerGroup = {
         id: this.getLastHash(),
         localPeer: localPeer,
         peerSource: peerSource,
       };
 
-      const peerGroup = this._peerGroup;
+      const peerGroup = this._readersPeerGroup;
 
       for (let page of this.pages?.values() || []) {
         WikiSpace.logger.debug(
@@ -257,14 +258,14 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
         console.log("stopping sync page " + page?.getLastHash());
         await this._node?.stopSync(
           page.blocks as CausalArray<Block>,
-          this._peerGroup?.id as string
+          this._readersPeerGroup?.id as string
         );
         await page.dontWatchForChanges();
         for (let block of page.blocks?.contents()!) {
           console.log("stopping sync block " + block?.getLastHash());
           await this._node?.stopSync(
             block as Block,
-            this._peerGroup?.id as string
+            this._readersPeerGroup?.id as string
           );
           await block.dontWatchForChanges();
         }
@@ -273,19 +274,19 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
       await this._node?.stopBroadcast(this);
       await this._node?.stopSync(
         this.pages as CausalArray<Page>,
-        this._peerGroup?.id as string
+        this._readersPeerGroup?.id as string
       );
       await this._node?.stopSync(
         this.title as MutableReference<string>,
-        this._peerGroup?.id as string
+        this._readersPeerGroup?.id as string
       );
       await this._node?.stopSync(
         this.permissionLogic as PermissionLogic,
-        this._peerGroup?.id as string
+        this._readersPeerGroup?.id as string
       );
       await this._node?.stopSync(
         this.pages as CausalArray<Page>,
-        this._peerGroup?.id as string
+        this._readersPeerGroup?.id as string
       );
       this._node = undefined;
     }
@@ -433,7 +434,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
           await this._node.sync(
             page.blocks as CausalArray<Block>,
             SyncMode.single,
-            this._peerGroup
+            this._readersPeerGroup
           );
           page.addObserver(this._pagesObserver);
           await page.loadAndWatchForChanges();
@@ -446,7 +447,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
             await this._node?.sync(
               block as Block,
               SyncMode.single,
-              this._peerGroup
+              this._readersPeerGroup
             );
             await block.loadAndWatchForChanges();
           }
@@ -459,7 +460,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
             console.log("stopping page syncing (obs) " + page?.getLastHash());
           this._node.stopSync(
             page.blocks as CausalArray<Block>,
-            this._peerGroup?.id
+            this._readersPeerGroup?.id
           );
           page.dontWatchForChanges();
           page.removeObserver(this._pagesObserver);
@@ -468,7 +469,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
               console.log(
                 "stopping sync block (obs-init) " + block?.getLastHash()
               );
-            await this._node?.stopSync(block as Block, this._peerGroup?.id);
+            await this._node?.stopSync(block as Block, this._readersPeerGroup?.id);
             block.dontWatchForChanges();
           }
         }
@@ -512,7 +513,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
           await this._node?.sync(
             block as Block,
             SyncMode.single,
-            this._peerGroup
+            this._readersPeerGroup
           );
           await block.loadAndWatchForChanges();
         }
@@ -520,7 +521,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
         if (this._node) {
           if (this._node)
             console.log("stopping block syncing (obs) " + block?.getLastHash());
-          await this._node.stopSync(block as Block, this._peerGroup?.id);
+          await this._node.stopSync(block as Block, this._readersPeerGroup?.id);
           block.dontWatchForChanges();
         }
       }
