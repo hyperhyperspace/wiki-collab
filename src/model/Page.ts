@@ -60,6 +60,23 @@ class Page extends HashedObject {
     
     return block;
   }
+
+  async addBlockNoSave(idx?: number, type?: BlockType, author?: Identity) {
+
+    const block = new Block(type, this.permissionLogic);
+    
+    if (this.hasResources()) {
+      block.setResources(this.getResources()!);
+    }
+
+    if (idx === undefined) {
+      await this.blocks?.push(block, author);
+    } else {
+      await this.blocks?.insertAt(block, idx, author);
+    }
+    
+    return block;
+  }
   
   async moveBlock(from: number, to: number, author?: Identity) {
     console.log('moving block from', from, 'to', to)
