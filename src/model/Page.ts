@@ -44,17 +44,7 @@ class Page extends HashedObject {
 
   async addBlock(idx?: number, type?: BlockType, author?: Identity) {
 
-    const block = new Block(type, this.permissionLogic);
-    
-    if (this.hasResources()) {
-      block.setResources(this.getResources()!);
-    }
-
-    if (idx === undefined) {
-      await this.blocks?.push(block, author);
-    } else {
-      await this.blocks?.insertAt(block, idx, author);
-    }
+    const block = await this.addBlockNoSave(idx, type, author);
     
     await this.blocks?.saveQueuedOps();
     
