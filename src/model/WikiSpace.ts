@@ -311,10 +311,10 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
 
   getPage(pageName: string) {
     // create the page we want to navigate to, so we can figure out its hash
-    let page = new Page(pageName, this.permissionLogic, this.hash());
+    let page = new Page(pageName, this.permissionLogic, this.getLastHash());
 
     // and try to get it from the wiki
-    const existingPage = this.pages?.get(page.hash());
+    const existingPage = this.pages?.get(page.getLastHash());
 
     return existingPage;
   }
@@ -338,7 +338,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
   }
 
   createPage(pageName: string) {
-    const page = new Page(pageName, this.permissionLogic, this.hash());
+    const page = new Page(pageName, this.permissionLogic, this.getLastHash());
 
     if (this.hasResources()) {
       page.setResources(this.getResources()!);
