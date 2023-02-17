@@ -23,16 +23,15 @@ class Page extends HashedObject {
   constructor(name?: string, permissionLogic?: PermissionLogic, wikiHash?: Hash) {
     super();
     
-    this.setRandomId();
-
-    if (name !== undefined && permissionLogic !== undefined && wikiHash !== undefined) {
+    if (permissionLogic !== undefined && wikiHash !== undefined) {
+      this.setRandomId();
       this.permissionLogic = permissionLogic;
       this.wikiHash = wikiHash
       this.addDerivedField('name', new MutableReference<string>());
-      this.name?.setValue(name);
       this.addDerivedField('blocks', new PageBlockArray(permissionLogic));
       this.addDerivedField('titleBlock', new Block());
     }
+    name && this.name?.setValue(name);
   }
 
   setAuthor(author: Identity) {
@@ -110,8 +109,8 @@ class Page extends HashedObject {
         return false;
     }
 
-    const another = new Page(this.name!.getValue(), this.permissionLogic, this.wikiHash);
-
+    const another = new Page(this.name?.getValue()!, this.permissionLogic, this.wikiHash);
+    another.setId(this.getId() as string);
     if (this.hasAuthor()) {
         another.setAuthor(this.getAuthor() as Identity);
     }

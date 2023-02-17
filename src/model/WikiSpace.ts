@@ -216,6 +216,8 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
           peerGroup
         );
 
+        await page.name?.loadAndWatchForChanges();
+        
         await Promise.all(
           [...page.blocks?.contents()!].map(async (block) => {
             console.log(
@@ -348,7 +350,6 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
   async createWelcomePage(title: string, author: Identity) {
     const welcomePage = this.createPage("Welcome");
     const welcomeBlock = new Block(BlockType.Text, this.permissionLogic);
-    welcomeBlock.setId("welcome-block-for-" + this.hash());
     await welcomeBlock.setValue(
       'This is the first page of "' + title + '".',
       author
@@ -364,9 +365,9 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
     if (page.wikiHash !== this.hash()) {
       throw new Error("Trying to add a page blonging to a different wiki");
     }
-
     await this.pages?.insertAt(page, this.pages?.size() || 0, author);
     await this.pages?.save();
+    await page.save();
   }
 
   async movePage(from: number, to: number, author?: Identity) {
