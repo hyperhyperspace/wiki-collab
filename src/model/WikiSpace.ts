@@ -241,11 +241,6 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
         SyncMode.recursive,
         peerGroup
       );
-      await this._node.sync(
-        this.pages as CausalArray<Page>,
-        SyncMode.single,
-        peerGroup
-      );
       WikiSpace.logger.debug(
         "Wiki " + this.getLastHash() + ": done starting sync"
       );
@@ -284,10 +279,6 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
       );
       await this._node?.stopSync(
         this.permissionLogic as PermissionLogic,
-        this._peerGroup?.id as string
-      );
-      await this._node?.stopSync(
-        this.pages as CausalArray<Page>,
         this._peerGroup?.id as string
       );
       this._node = undefined;
@@ -476,7 +467,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
           }
         }
       // handle restoring from a checkpoint
-      } else if (ev.action === MutableContentEvents.RestoredCheckpoint) {
+      }/* else if (ev.action === MutableContentEvents.RestoredCheckpoint) {
         if (this._node) {
           await Promise.all([...this.pages?.contents()!].map(async (page) => {
             if (this._node)
@@ -500,7 +491,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
             })]);
           }));
         }
-      }
+      }*/
     }
     if (ev.data instanceof Block) {
       const block = ev.data as Block;
