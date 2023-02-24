@@ -12,10 +12,10 @@ import {
     LogLevel,
     MeshNode,
     MultiMap,
-    MutableReference,
+    /*MutableReference,*/
     PeerGroupInfo,
 } from "@hyper-hyper-space/core";
-import { PageArray } from "./PageArray";
+//import { PageArray } from "./PageArray";
 
 export const PermFlagMembers = 'members'
 export const PermFlagModerators = 'moderators'
@@ -46,8 +46,8 @@ class PermissionLogic extends HashedObject {
 
   _node?: MeshNode;
 
-  title?: MutableReference<string>;
-  pages?: PageArray;
+  //title?: MutableReference<string>;
+  //pages?: PageArray;
 
   _peerGroup?: PeerGroupInfo;
 

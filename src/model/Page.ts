@@ -23,7 +23,21 @@ class Page extends HashedObject {
   constructor(name?: string, permissionLogic?: PermissionLogic, wikiHash?: Hash) {
     super();
     
+    // FIXME: we're not checking that the received permissionLogic matches the wiki
+    //        that hashes to wikiHash. Possible solution: change wikiHash to 
+    //        wiki: HashReference<Wiki>, and receive the actual wiki object as param.
+    //        (then we can have the wiki available again for validation).
+
     if (permissionLogic !== undefined && wikiHash !== undefined) {
+
+      if (!(permissionLogic instanceof PermissionLogic)) {
+        throw new Error('Trying to create a wiki page, but the received PermissionLogic object has the wrong type.');
+      }
+
+      if (typeof(wikiHash) !== 'string') {
+        throw new Error('Trying to create a wiki page, but the received wiki hash has the wrong type.');
+      }
+
       this.setRandomId();
       this.permissionLogic = permissionLogic;
       this.wikiHash = wikiHash
@@ -31,7 +45,10 @@ class Page extends HashedObject {
       this.addDerivedField('blocks', new PageBlockArray(permissionLogic));
       this.addDerivedField('titleBlock', new Block());
     }
-    name && this.name?.setValue(name);
+
+    if (name !== undefined) {
+      this.name?.setValue(name);
+    }
   }
 
   setAuthor(author: Identity) {
@@ -101,15 +118,11 @@ class Page extends HashedObject {
         return false;
     }
 
-    if (this.name === undefined) {
+    if (this.permissionLogic === undefined) {
         return false;
     }
 
-    if (this.blocks === undefined) {
-        return false;
-    }
-
-    const another = new Page(this.name?.getValue()!, this.permissionLogic, this.wikiHash);
+    const another = new Page(undefined, this.permissionLogic, this.wikiHash);
     another.setId(this.getId() as string);
     if (this.hasAuthor()) {
         another.setAuthor(this.getAuthor() as Identity);
