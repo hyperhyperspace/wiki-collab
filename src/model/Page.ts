@@ -2,8 +2,8 @@ import {
   ClassRegistry,
   Hash,
   HashedObject,
-  Hashing,
   Identity,
+  MutableReference,
 } from "@hyper-hyper-space/core";
 
 import { BlockType } from "..";
@@ -16,30 +16,26 @@ class Page extends HashedObject {
 
   permissionLogic?: PermissionLogic;
   wikiHash?: Hash;
-  name?: string;
+  name?: MutableReference<string>;
   blocks?: PageBlockArray;
   titleBlock?: Block;
 
   constructor(name?: string, permissionLogic?: PermissionLogic, wikiHash?: Hash) {
     super();
-
-    if (name !== undefined && permissionLogic !== undefined && wikiHash !== undefined) {
+    
+    if (permissionLogic !== undefined && wikiHash !== undefined) {
+      this.setRandomId();
       this.permissionLogic = permissionLogic;
       this.wikiHash = wikiHash
-      this.name = name;
-      this.setId(
-        Hashing.forString(wikiHash + "_" + this.name)
-      );
+      this.addDerivedField('name', new MutableReference<string>());
       this.addDerivedField('blocks', new PageBlockArray(permissionLogic));
       this.addDerivedField('titleBlock', new Block());
     }
+    name && this.name?.setValue(name);
   }
 
   setAuthor(author: Identity) {
     super.setAuthor(author);
-    this.setId(
-      Hashing.forString(this.wikiHash + "_" + this.name)
-    );
   }
 
   async addBlock(idx?: number, type?: BlockType, author?: Identity) {
@@ -113,12 +109,8 @@ class Page extends HashedObject {
         return false;
     }
 
-    if (this.getId() !== Hashing.forString(this.wikiHash + "_" + this.name)) {
-        return false;
-    }
-
-    const another = new Page(this.name, this.permissionLogic, this.wikiHash);
-
+    const another = new Page(this.name?.getValue()!, this.permissionLogic, this.wikiHash);
+    another.setId(this.getId() as string);
     if (this.hasAuthor()) {
         another.setAuthor(this.getAuthor() as Identity);
     }

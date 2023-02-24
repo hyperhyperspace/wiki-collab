@@ -199,7 +199,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
 
       for (let page of this.pages?.values() || []) {
         WikiSpace.logger.debug(
-          "Wiki " + this.getLastHash() + ": starting sync of page " + page?.name
+          "Wiki " + this.getLastHash() + ": starting sync of page " + page?.name?.getValue()
         );
         await this._node?.sync(
           page.blocks as CausalArray<Block>,
@@ -209,18 +209,27 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
         page.addObserver(this._pagesObserver);
         await page.loadAndWatchForChanges();
         
+        // load the page name
+        await this._node?.sync(
+          page.name as MutableReference<string>,
+          SyncMode.single,
+          peerGroup
+        );
+
+        await page.name?.loadAndWatchForChanges();
+        
         await Promise.all(
           [...page.blocks?.contents()!].map(async (block) => {
             console.log(
               "Page " +
-                page.name +
+                page.name?.getValue() +
                 ": starting sync block " +
                 block?.getLastHash()
             );
             this._node?.sync(block as Block, SyncMode.single, peerGroup);
             block.cascadeMutableContentEvents();
             await block.loadAndWatchForChanges();
-          })
+          }),
         );
       }
 
@@ -235,7 +244,6 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
         SyncMode.single,
         peerGroup
       );
-
       await this._node.sync(
         this.permissionLogic as PermissionLogic,
         SyncMode.recursive,
@@ -266,6 +274,10 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
           );
           await block.dontWatchForChanges();
         }
+        await this._node?.stopSync(
+          page?.name as MutableReference<string>,
+          this._peerGroup?.id as string
+        );
       }
 
       await this._node?.stopBroadcast(this);
@@ -301,11 +313,7 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
   }
 
   getPage(pageName: string) {
-    // create the page we want to navigate to, so we can figure out its hash
-    let page = new Page(pageName, this.permissionLogic, this.getLastHash());
-
-    // and try to get it from the wiki
-    const existingPage = this.pages?.get(page.getLastHash());
+    const existingPage = [...this.pages?.values()!].find(page => page.name?.getValue() === pageName);
 
     return existingPage;
   }
@@ -341,7 +349,6 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
   async createWelcomePage(title: string, author: Identity) {
     const welcomePage = this.createPage("Welcome");
     const welcomeBlock = new Block(BlockType.Text, this.permissionLogic);
-    welcomeBlock.setId("welcome-block-for-" + this.hash());
     await welcomeBlock.setValue(
       'This is the first page of "' + title + '".',
       author
@@ -357,9 +364,9 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
     if (page.wikiHash !== this.hash()) {
       throw new Error("Trying to add a page blonging to a different wiki");
     }
-
     await this.pages?.insertAt(page, this.pages?.size() || 0, author);
     await this.pages?.save();
+    await page.save();
   }
 
   async movePage(from: number, to: number, author?: Identity) {
@@ -424,25 +431,37 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
 
           if (this._node)
             console.log("starting to sync page (obs) " + page?.getLastHash());
-          await this._node.sync(
+          
+          // sync the page blocks
+          this._node.sync(
             page.blocks as CausalArray<Block>,
             SyncMode.single,
             this._peerGroup
           );
+          page.blocks?.loadAndWatchForChanges();
+
           page.addObserver(this._pagesObserver);
-          await page.loadAndWatchForChanges();
+          page.loadAndWatchForChanges();
+
+          // sync the page name
+          this._node?.sync(
+            page.name as MutableReference<string>,
+            SyncMode.single,
+            this._peerGroup
+          );
+          page.name?.loadAndWatchForChanges();
 
           for (let block of page.blocks?.contents()!) {
             if (this._node)
               console.log(
                 "starting sync block (obs-init) " + block?.getLastHash()
               );
-            await this._node?.sync(
+            this._node?.sync(
               block as Block,
               SyncMode.single,
               this._peerGroup
             );
-            await block.loadAndWatchForChanges();
+            block.loadAndWatchForChanges();
           }
         }
       // handle removing a page
@@ -457,12 +476,20 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
           );
           page.dontWatchForChanges();
           page.removeObserver(this._pagesObserver);
+
+          // stop syncing the page name
+          this._node?.stopSync(
+            page.name as MutableReference<string>,
+            this._peerGroup?.id
+          );
+          page.name?.dontWatchForChanges();
+
           for (let block of page.blocks?.contents()!) {
             if (this._node)
               console.log(
                 "stopping sync block (obs-init) " + block?.getLastHash()
               );
-            await this._node?.stopSync(block as Block, this._peerGroup?.id);
+            this._node?.stopSync(block as Block, this._peerGroup?.id);
             block.dontWatchForChanges();
           }
         }
@@ -499,18 +526,18 @@ class WikiSpace extends HashedObject implements SpaceEntryPoint {
         if (this._node) {
           if (this._node)
             console.log("starting to sync block (obs) " + block?.getLastHash());
-          await this._node?.sync(
+          this._node?.sync(
             block as Block,
             SyncMode.single,
             this._peerGroup
           );
-          await block.loadAndWatchForChanges();
+          block.loadAndWatchForChanges();
         }
       } else if (ev.action === MutableContentEvents.RemoveObject) {
         if (this._node) {
           if (this._node)
             console.log("stopping block syncing (obs) " + block?.getLastHash());
-          await this._node.stopSync(block as Block, this._peerGroup?.id);
+          this._node.stopSync(block as Block, this._peerGroup?.id);
           block.dontWatchForChanges();
         }
       }
